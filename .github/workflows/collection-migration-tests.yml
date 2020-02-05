@@ -8,8 +8,35 @@ on:
   - cron: 53 */4 * * *  # At minute 53 past every 4th hour.
 
 jobs:
+  prepare-migration:
+    name: pre:grab_repos
+    runs-on: ubuntu-latest
+    env:
+      CORE_REPO_SLUG: ansible/ansible
+
+    steps:
+    - name: Check out ${{ github.repository }}
+      uses: actions/checkout@master
+    - name: Check out ${{ env.CORE_REPO_SLUG }}
+      uses: actions/checkout@master
+      with:
+        repository: ${{ env.CORE_REPO_SLUG }}
+        path: .cache/releases/devel.git
+        ref: devel
+    - name: List stuff
+      run: |
+        pwd
+        ls -alhR .
+    - uses: actions/upload-artifact@v1
+      with:
+        name: migration-env
+        path: .
+
+
   migrate-collections:
     name: ${{ matrix.migration-scenario }}:migrate+build
+    needs:
+    - prepare-migration
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -23,6 +50,15 @@ jobs:
         - mintest
         - stdlib
     steps:
+    - uses: actions/download-artifact@v1
+      with:
+        name: migration-env
+        path: .
+    - name: List stuff
+      run: |
+        pwd
+        ls -alhR .
+        exit 1
     - uses: actions/checkout@master
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
